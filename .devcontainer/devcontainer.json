@@ -1,6 +1,9 @@
 {
   "name": "Python 3.12 & Django 4.2",
   "image": "mcr.microsoft.com/devcontainers/python:3.12-bullseye",
+  "features": {
+    "docker-in-docker": "latest"
+  },
   "postCreateCommand": "pip install -r requirements.txt",
   "customizations": {
     "vscode": {
@@ -17,4 +20,3 @@
     }
   }
 }
-
