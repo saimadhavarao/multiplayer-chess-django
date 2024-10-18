@@ -1,0 +1,17 @@
+{% extends 'chess_app/base.html' %}
+
+{% block content %}
+<h2>Login</h2>
+
+<!-- Add CSRF token and use Django's built-in form object -->
+<form method="post">
+    {% csrf_token %}  <!-- Important for security -->
+    
+    <!-- Display the login form fields -->
+    {{ form.as_p }}
+    
+    <!-- Submit button -->
+    <button type="submit">Login</button>
+</form>
+
+{% endblock %}

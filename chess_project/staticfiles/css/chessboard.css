@@ -1,0 +1,55 @@
+body {
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+}
+
+h1 {
+    text-align: center;
+}
+
+table {
+    margin: auto;
+    border: 3px solid black;
+    border-collapse: collapse;
+}
+
+th {
+    background-color: tan;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 20px;
+}
+
+td {
+    width: 60px;
+    height: 60px;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 40px;
+    border: 2px solid black;
+}
+
+/* Alternate the colors using pseudo-classes */
+tr:nth-child(even) td:nth-child(odd), tr:nth-child(odd) td:nth-child(even) {
+    background-color: tan !important;
+}
+
+tr:nth-child(even) td:nth-child(even), tr:nth-child(odd) td:nth-child(odd) {
+    background-color: chocolate !important;
+}
+
+.controls {
+    margin: 5px;
+    text-align: center;
+}
+
+input {
+    margin: 0 5px;
+}
+
+button {
+    margin: 0 5px;
+    padding: 5px 10px;
+    font-size: 16px;
+}
