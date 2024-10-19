@@ -134,8 +134,14 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # For production (optional,
 
 
 # Authentication redirects
-LOGIN_REDIRECT_URL = 'play_game'  # Redirect to chess game after login
+LOGIN_URL = 'login'  # Match this to the name of your login URL pattern in urls.py
+LOGIN_REDIRECT_URL = 'game'  # Redirect to game page after login
 LOGOUT_REDIRECT_URL = 'login'  # Redirect to login page after logging out
+
+# Session settings for auto-logout after 30 minutes of inactivity
+SESSION_COOKIE_AGE = 30 * 60  # 30 minutes in seconds
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # Session expires when the browser is closed
+SESSION_SAVE_EVERY_REQUEST = True  # Refresh session timeout with every request
 
 # Email backend (optional - useful for password reset functionality)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Use console backend for testing emails

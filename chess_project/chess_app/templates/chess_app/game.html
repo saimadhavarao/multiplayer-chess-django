@@ -1,0 +1,35 @@
+{% extends 'chess_app/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <!-- Left Section: Active Users -->
+        <div class="col-md-6">
+            <h2>Active Users</h2>
+            <ul>
+                {% for user in active_users %}
+                    {% if user.is_active %}
+                    <li>
+                        {{ user.username }}
+                        <button class="btn btn-primary" onclick="inviteUser('{{ user.username }}')">Invite</button>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Right Section: Game History -->
+        <div class="col-md-6">
+            <h2>Game History</h2>
+            <p>This section will display game history in the future.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function inviteUser(username) {
+        alert('Invite sent to ' + username);
+    }
+</script>
+
+{% endblock %}

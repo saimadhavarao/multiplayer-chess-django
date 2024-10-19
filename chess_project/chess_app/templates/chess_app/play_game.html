@@ -5,6 +5,8 @@
     {% load static %}
     <!-- Link to the chessboard.css file -->
     <link rel="stylesheet" href="{% static 'chess_app/css/chessboard.css' %}">
+    <!-- Link to the chessboard.js file -->
+    <script src="{% static 'chess_app/js/chessboard.js' %}"></script>
 </head>
 
 <h1>Chess Game by Sai Madhava Rao Lakkakula</h1>
@@ -28,8 +30,8 @@
 <div class="controls d-flex justify-content-around align-items-center my-3">
     <input type="text" class="form-control mx-2" id="src" placeholder="e2" style="width: 100px;">
     <input type="text" class="form-control mx-2" id="dst" placeholder="e4" style="width: 100px;">
-    <button class="btn btn-primary mx-2">Move</button>
-    <button class="btn btn-danger mx-2">Reset</button>
+    <button class="btn btn-primary mx-2" onclick="movePiece()">Move</button>
+    <button class="btn btn-danger mx-2" onclick="resetBoard()">Reset</button>
 </div>
 
 {% endblock %}
