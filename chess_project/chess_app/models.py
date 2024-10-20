@@ -11,9 +11,21 @@ class Profile(models.Model):
     def __str__(self):
         return f'{self.user.username} - Last activity: {self.last_activity}'
 
+
+class Match(models.Model):
+    player1 = models.ForeignKey(User, related_name='player1_matches', on_delete=models.CASCADE)
+    player2 = models.ForeignKey(User, related_name='player2_matches', on_delete=models.CASCADE)
+    board_state = models.JSONField(default=dict)  # This will store the board state as JSON
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"Match between {self.player1} and {self.player2}"
+    
 class Invitation(models.Model):
     inviter = models.ForeignKey(User, related_name="sent_invitations", on_delete=models.CASCADE)
     invitee = models.ForeignKey(User, related_name="received_invitations", on_delete=models.CASCADE)
+    match = models.ForeignKey(Match, on_delete=models.CASCADE, null=True, blank=True)  # Add match foreign key
     timestamp = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=10, choices=[('pending', 'Pending'), ('accepted', 'Accepted'), ('rejected', 'Rejected')], default='pending')
 
@@ -35,4 +47,3 @@ def create_or_update_user_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(user=instance)
     instance.profile.save()
-

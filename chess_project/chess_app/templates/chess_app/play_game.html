@@ -40,6 +40,8 @@
 </div>
 
 <script>
+    let matchId = "{{ match_id }}";  // Set this to the match's ID passed from the server
+
     function getCSRFToken() {
         let cookies = document.cookie.split(';');
         for (let i = 0; i < cookies.length; i++) {
@@ -73,6 +75,53 @@
         .catch(error => {
             console.error('Error:', error);
         });
+    }
+
+    // Poll for board updates every 3 seconds
+    function pollBoardState() {
+        fetch(`/get_board_state/${matchId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                updateBoard(data.board_state);  // Update the board with the new state
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching board state:', error);
+        });
+    }
+
+    setInterval(pollBoardState, 3000);  // Poll every 3 seconds
+
+    function movePiece() {
+        const src = document.getElementById('src').value;
+        const dst = document.getElementById('dst').value;
+
+        fetch(`/update_board/${matchId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ 'src': src, 'dst': dst })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                updateBoard(data.board_state);  // Update the board locally after move
+            } else {
+                alert('Invalid move!');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating board:', error);
+        });
+    }
+
+    // You need to implement this function to update the board on the page
+    function updateBoard(boardState) {
+        // Logic to update the chessboard based on the board state
+        // You can parse the boardState JSON and update each piece on the board accordingly
     }
 </script>
 

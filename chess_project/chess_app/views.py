@@ -1,10 +1,10 @@
 from django.contrib.auth.forms import UserCreationForm
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.utils.timezone import now
 from datetime import timedelta
-from chess_app.models import Profile, Invitation, MatchResult
+from chess_app.models import Profile, Invitation, Match, MatchResult
 from django.http import JsonResponse
 import json
 
@@ -41,28 +41,36 @@ def rules(request):
 
 # View for the chess game page (protected with @login_required)
 @login_required
-def play_game(request):
-    return render(request, 'chess_app/play_game.html')
+def play_game(request, match_id):
+    context = {
+        'match_id': match_id,   
+    }
+    return render(request, 'chess_app/play_game.html', context)
 
 # View for the game page with active users and match history
 @login_required
 def game_page(request):
-    # Update the last activity timestamp for the current user
     Profile.objects.filter(user=request.user).update(last_activity=now())
-
-    # Retrieve active users who have been active within the last 10 minutes (excluding the current user)
     ten_minutes_ago = now() - timedelta(minutes=10)
     active_users = Profile.objects.filter(last_activity__gte=ten_minutes_ago).exclude(user=request.user)
-
-    # Retrieve match history for the logged-in user
     match_history = MatchResult.objects.filter(player=request.user)
 
-    # Pass active users and match history to the template
     context = {
         'active_users': active_users,
         'match_history': match_history,
     }
     return render(request, 'chess_app/game.html', context)
+
+@login_required
+def check_active_users(request):
+    ten_minutes_ago = now() - timedelta(minutes=10)
+    active_users = Profile.objects.filter(last_activity__gte=ten_minutes_ago).exclude(user=request.user)
+
+    users_data = [
+        {'username': profile.user.username} for profile in active_users
+    ]
+
+    return JsonResponse({'active_users': users_data})
 
 # View for sending an invite
 @login_required
@@ -72,11 +80,10 @@ def send_invite(request):
         invited_username = data.get('username')
         try:
             invited_user = User.objects.get(username=invited_username)
-            # Create or get the existing invitation
             invitation, created = Invitation.objects.get_or_create(
                 inviter=request.user,
                 invitee=invited_user,
-                status='pending'  # Set status to 'pending'
+                status='pending'
             )
             if created:
                 return JsonResponse({'status': 'success', 'message': f'Invite sent to {invited_username}'})
@@ -90,14 +97,15 @@ def send_invite(request):
 @login_required
 def check_invites(request):
     try:
-        # Check for pending invites
+        # Check for pending invites for the invitee (Player 2)
         invite = Invitation.objects.get(invitee=request.user, status='pending')
         return JsonResponse({'invite': {'inviter': invite.inviter.username}})
     except Invitation.DoesNotExist:
-        # Check if the invite has been accepted and trigger the redirection
-        invite = Invitation.objects.filter(invitee=request.user, status='accepted').first()
-        if invite:
-            return JsonResponse({'invite': None, 'redirect': True})  # Redirect only if accepted
+        # If invitee has no pending invites, check if inviter's invite has been accepted
+        accepted_invite = Invitation.objects.filter(inviter=request.user, status='accepted').first()
+        if accepted_invite and accepted_invite.match:
+            # Notify inviter (Player 1) to redirect to the game
+            return JsonResponse({'invite': None, 'redirect': True, 'match_id': accepted_invite.match.id})
         return JsonResponse({'invite': None, 'redirect': False})
 
 # View for responding to an invite (accept/decline)
@@ -117,11 +125,16 @@ def respond_invite(request):
             invite.save()
 
             if status == 'accepted':
-                # Notify both users to start the game
+                # Create a match and link it to the invitation
+                match_id = create_match(inviter, request.user)  # Create the match
+                invite.match = Match.objects.get(id=match_id)  # Link match to invite
+                invite.save()
+
                 return JsonResponse({
-                    'status': 'success', 
+                    'status': 'success',
                     'message': 'Game started',
-                    'redirect': True  # Set redirect to True when accepted
+                    'redirect': True,
+                    'match_id': match_id  # Pass match_id to track the match for both users
                 })
             else:
                 return JsonResponse({'status': 'success', 'message': 'Invite declined'})
@@ -135,18 +148,71 @@ def respond_invite(request):
 @login_required
 def resign_game(request):
     if request.method == 'POST':
-        # Get the current user's opponent
         current_user = request.user
-        opponent = get_opponent(current_user)  # Assume you have a function to get the opponent
+        match_id = request.POST.get('match_id')
+        match = Match.objects.get(id=match_id)
+        opponent = get_opponent(current_user, match)
 
         if opponent:
-            # Create match results
             MatchResult.objects.create(player=current_user, opponent=opponent, result='Lost')
             MatchResult.objects.create(player=opponent, opponent=current_user, result='Won')
+            match.active = False
+            match.save()
 
-            # Redirect both players to the game history page
             return JsonResponse({'status': 'success'})
         else:
             return JsonResponse({'status': 'error', 'message': 'No active opponent found.'})
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+# View for retrieving the current board state
+@login_required
+def get_board_state(request, match_id):
+    try:
+        match = Match.objects.get(id=match_id, active=True)
+        return JsonResponse({'status': 'success', 'board_state': match.board_state})
+    except Match.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Match not found or is inactive'})
+
+# View for updating the board after a move
+@login_required
+def update_board(request, match_id):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        src = data.get('src')
+        dst = data.get('dst')
+
+        try:
+            match = Match.objects.get(id=match_id, active=True)
+            board_state = update_board_state(match.board_state, src, dst)
+            match.board_state = board_state
+            match.save()
+
+            return JsonResponse({'status': 'success', 'board_state': board_state})
+        except Match.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Match not found'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+# Helper function to update board state
+def update_board_state(board_state, src, dst):
+    board_state[dst] = board_state[src]
+    board_state[src] = None
+    return board_state
+
+# Helper function to create a match
+def create_match(user1, user2):
+    match = Match.objects.create(
+        player1=user1,
+        player2=user2,
+        board_state={},  # Initialize the board state here
+        active=True
+    )
+    return match.id
+
+# Helper function to get opponent of a player in a match
+def get_opponent(user, match):
+    if match.player1 == user:
+        return match.player2
+    elif match.player2 == user:
+        return match.player1
+    return None

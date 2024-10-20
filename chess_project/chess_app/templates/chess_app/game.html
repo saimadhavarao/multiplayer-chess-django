@@ -6,7 +6,7 @@
         <!-- Left Section: Active Users -->
         <div class="col-md-6">
             <h2>Active Users</h2>
-            <ul class="list-group">
+            <ul class="list-group" id="active-users-list">
                 {% for profile in active_users %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         {{ profile.user.username }} <!-- Display the username from the Profile model -->
@@ -48,7 +48,6 @@
 </div>
 
 <script>
-    // JavaScript for inviteUser and handling invitations (kept same as previous)
     function getCSRFToken() {
         let cookies = document.cookie.split(';');
         for (let i = 0; i < cookies.length; i++) {
@@ -61,14 +60,13 @@
     }
 
     function inviteUser(username) {
-        // Send an AJAX POST request to send the invite
         fetch("{% url 'send_invite' %}", {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()  // Include CSRF token for security
+                'X-CSRFToken': getCSRFToken()
             },
-            body: JSON.stringify({ 'username': username })  // Send the username as part of the request body
+            body: JSON.stringify({ 'username': username })
         })
         .then(response => response.json())
         .then(data => {
@@ -83,13 +81,16 @@
         });
     }
 
-    // Poll for invitations every 5 seconds
-    setInterval(checkInvitations, 5000);
+    // Poll for invitations and active users every 1 second
+    setInterval(checkInvitations, 1000);
+    setInterval(checkActiveUsers, 1000);
 
     function checkInvitations() {
         fetch("{% url 'check_invites' %}")
         .then(response => response.json())
         .then(data => {
+            console.log("Received data from server:", data);  // Debugging: Check what data is received
+    
             if (data.invite) {
                 let inviter = data.invite.inviter;
                 if (confirm(inviter + " has invited you to play. Accept?")) {
@@ -97,12 +98,22 @@
                 } else {
                     handleInvitationResponse(inviter, 'rejected');
                 }
+            } else if (data.redirect && data.match_id) {
+                console.log("Redirecting to game, match_id:", data.match_id);
+                window.location.href = `/play_game/${data.match_id}/`;
+            } else if (data.error) {
+                console.error('Error:', data.error);  // Log any errors from the server
             }
         })
         .catch(error => {
             console.error('Error checking invitations:', error);
         });
     }
+    
+    
+    
+    
+    
 
     function handleInvitationResponse(inviter, status) {
         fetch("{% url 'respond_invite' %}", {
@@ -117,7 +128,7 @@
         .then(data => {
             if (data.status === 'success') {
                 if (status === 'accepted') {
-                    window.location.href = "{% url 'play_game' %}";
+                    window.location.href = `/play_game/${data.match_id}/`;
                 } else {
                     alert('You declined the invite from ' + inviter);
                 }
@@ -127,6 +138,33 @@
         })
         .catch(error => {
             console.error('Error responding to invitation:', error);
+        });
+    }
+
+    // Function to check for active users
+    function checkActiveUsers() {
+        fetch("{% url 'check_active_users' %}")
+        .then(response => response.json())
+        .then(data => {
+            const activeUsersList = document.getElementById('active-users-list');
+            activeUsersList.innerHTML = '';  // Clear the list
+
+            if (data.active_users.length > 0) {
+                data.active_users.forEach(user => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.innerHTML = `
+                        ${user.username}
+                        <button class="btn btn-primary" onclick="inviteUser('${user.username}')">Invite</button>
+                    `;
+                    activeUsersList.appendChild(li);
+                });
+            } else {
+                activeUsersList.innerHTML = '<li class="list-group-item">No active users</li>';
+            }
+        })
+        .catch(error => {
+            console.error('Error checking active users:', error);
         });
     }
 </script>
