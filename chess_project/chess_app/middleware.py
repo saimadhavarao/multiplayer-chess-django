@@ -1,28 +1,31 @@
-import time
 from django.utils.timezone import now
 from datetime import timedelta
-from django.conf import settings
+from chess_app.models import Profile
 
 class ActiveUserMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        # Check if the user is authenticated
         if request.user.is_authenticated:
-            # Get the last activity time from the session
-            last_activity = request.session.get('last_activity')
-            
-            if last_activity:
-                # Check if the last activity was within the active window (e.g., 10 minutes)
-                elapsed_time = now() - last_activity
-                if elapsed_time > timedelta(minutes=10):
-                    request.user.is_active = False
+            try:
+                # Get the last activity time from the Profile model
+                last_activity_time = Profile.objects.get(user=request.user).last_activity
+
+                # Check if the user has been inactive for more than 10 minutes
+                if now() - last_activity_time > timedelta(minutes=10):
+                    request.user.is_active = False  # Mark the user inactive
                 else:
-                    request.user.is_active = True
-            else:
-                request.user.is_active = True
+                    request.user.is_active = True  # Mark the user active
 
-            # Update the last activity time in the session
-            request.session['last_activity'] = now()
+                # Update the last activity timestamp in the Profile model
+                Profile.objects.filter(user=request.user).update(last_activity=now())
+                
+            except Profile.DoesNotExist:
+                # Handle if no Profile exists for the user (this shouldn't happen if profiles are created on user creation)
+                Profile.objects.create(user=request.user, last_activity=now())
 
-        return self.get_response(request)
+        # Continue processing the request
+        response = self.get_response(request)
+        return response

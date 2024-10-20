@@ -2,6 +2,9 @@ from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User  # Import to handle user queries
+from django.utils.timezone import now  # Import for timezone-aware datetime
+from datetime import timedelta  # Import timedelta
+from chess_app.models import Profile  # Import Profile model
 
 # Redirect the home page to login or game depending on authentication
 def redirect_login(request):
@@ -43,10 +46,17 @@ def play_game(request):
 # View for the game page with active users and game history
 @login_required
 def game_page(request):
-    # Retrieve all active users (excluding the current user)
-    active_users = User.objects.filter(is_active=True).exclude(username=request.user.username)
+    # Step 1: Update the last activity timestamp for the current user
+    Profile.objects.filter(user=request.user).update(last_activity=now())
 
-    # Pass active users to the template
+    # Step 2: Retrieve active users who have been active within the last 10 minutes (excluding the current user)
+    ten_minutes_ago = now() - timedelta(minutes=10)
+    active_users = Profile.objects.filter(last_activity__gte=ten_minutes_ago).exclude(user=request.user)
+
+    # Step 3: Debugging print statement to see active users in the console
+    print(f"Active Users: {active_users}")
+
+    # Step 4: Pass active users to the template
     context = {
         'active_users': active_users,
     }

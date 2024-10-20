@@ -53,6 +53,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'chess_app.middleware.ActiveUserMiddleware',  # New middleware for tracking active users
 ]
 
 ROOT_URLCONF = 'chess_project.urls'
