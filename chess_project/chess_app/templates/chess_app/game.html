@@ -21,14 +21,113 @@
         <!-- Right Section: Game History -->
         <div class="col-md-6">
             <h2>Game History</h2>
-            <p>This section will display game history in the future.</p>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Opponent</th>
+                        <th>Result</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for match in match_history %}
+                    <tr>
+                        <td>{{ match.opponent.username }}</td>
+                        <td>{{ match.result }}</td>
+                        <td>{{ match.timestamp|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3">No matches played yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
 <script>
+    // JavaScript for inviteUser and handling invitations (kept same as previous)
+    function getCSRFToken() {
+        let cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            let cookie = cookies[i].trim();
+            if (cookie.startsWith('csrftoken=')) {
+                return cookie.substring('csrftoken='.length, cookie.length);
+            }
+        }
+        return '';
+    }
+
     function inviteUser(username) {
-        alert('Invite sent to ' + username);
+        // Send an AJAX POST request to send the invite
+        fetch("{% url 'send_invite' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()  // Include CSRF token for security
+            },
+            body: JSON.stringify({ 'username': username })  // Send the username as part of the request body
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Invite sent to ' + username);
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error sending invite:', error);
+        });
+    }
+
+    // Poll for invitations every 5 seconds
+    setInterval(checkInvitations, 5000);
+
+    function checkInvitations() {
+        fetch("{% url 'check_invites' %}")
+        .then(response => response.json())
+        .then(data => {
+            if (data.invite) {
+                let inviter = data.invite.inviter;
+                if (confirm(inviter + " has invited you to play. Accept?")) {
+                    handleInvitationResponse(inviter, 'accepted');
+                } else {
+                    handleInvitationResponse(inviter, 'rejected');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error checking invitations:', error);
+        });
+    }
+
+    function handleInvitationResponse(inviter, status) {
+        fetch("{% url 'respond_invite' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ 'inviter': inviter, 'status': status })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                if (status === 'accepted') {
+                    window.location.href = "{% url 'play_game' %}";
+                } else {
+                    alert('You declined the invite from ' + inviter);
+                }
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error responding to invitation:', error);
+        });
     }
 </script>
 
