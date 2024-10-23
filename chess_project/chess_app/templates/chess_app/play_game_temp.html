@@ -1,0 +1,290 @@
+{% extends 'chess_app/base.html' %}
+{% block content %}
+<head>
+   {% load static %}
+   <!-- Link to the chessboard.css file -->
+   <link rel="stylesheet" href="{% static 'chess_app/css/chessboard.css' %}">
+   <!-- Link to the chessboard.js file -->
+   <script src="{% static 'chess_app/js/chessboard.js' %}"></script>
+</head>
+<h1>Chess Game</h1>
+<p style="font-size: 18px; color: #444;">
+   <span style="font-weight: bold; color: green;">{{ match.player1.username }}</span> 
+   vs 
+   <span style="font-weight: bold; color: red;">{{ match.player2.username }}</span>
+</p>
+<p style="font-size: 18px; margin-top:4px;font-weight:600">
+   Current : 
+   <span id="currentTurn" style="font-weight: bold; color: green;"></span>
+</p>
+<!-- Chessboard Table -->
+<table id="chessboard">
+   <tr>
+      <th>8</th>
+      <td id="a8">&#9820;</td>
+      <td id="b8">&#9822;</td>
+      <td id="c8">&#9821;</td>
+      <td id="d8">&#9819;</td>
+      <td id="e8">&#9818;</td>
+      <td id="f8">&#9821;</td>
+      <td id="g8">&#9822;</td>
+      <td id="h8">&#9820;</td>
+   </tr>
+   <tr>
+      <th>7</th>
+      <td id="a7">&#9823;</td>
+      <td id="b7">&#9823;</td>
+      <td id="c7">&#9823;</td>
+      <td id="d7">&#9823;</td>
+      <td id="e7">&#9823;</td>
+      <td id="f7">&#9823;</td>
+      <td id="g7">&#9823;</td>
+      <td id="h7">&#9823;</td>
+   </tr>
+   <tr>
+      <th>6</th>
+      <td id="a6">&nbsp;</td>
+      <td id="b6">&nbsp;</td>
+      <td id="c6">&nbsp;</td>
+      <td id="d6">&nbsp;</td>
+      <td id="e6">&nbsp;</td>
+      <td id="f6">&nbsp;</td>
+      <td id="g6">&nbsp;</td>
+      <td id="h6">&nbsp;</td>
+   </tr>
+   <tr>
+      <th>5</th>
+      <td id="a5">&nbsp;</td>
+      <td id="b5">&nbsp;</td>
+      <td id="c5">&nbsp;</td>
+      <td id="d5">&nbsp;</td>
+      <td id="e5">&nbsp;</td>
+      <td id="f5">&nbsp;</td>
+      <td id="g5">&nbsp;</td>
+      <td id="h5">&nbsp;</td>
+   </tr>
+   <tr>
+      <th>4</th>
+      <td id="a4">&nbsp;</td>
+      <td id="b4">&nbsp;</td>
+      <td id="c4">&nbsp;</td>
+      <td id="d4">&nbsp;</td>
+      <td id="e4">&nbsp;</td>
+      <td id="f4">&nbsp;</td>
+      <td id="g4">&nbsp;</td>
+      <td id="h4">&nbsp;</td>
+   </tr>
+   <tr>
+      <th>3</th>
+      <td id="a3">&nbsp;</td>
+      <td id="b3">&nbsp;</td>
+      <td id="c3">&nbsp;</td>
+      <td id="d3">&nbsp;</td>
+      <td id="e3">&nbsp;</td>
+      <td id="f3">&nbsp;</td>
+      <td id="g3">&nbsp;</td>
+      <td id="h3">&nbsp;</td>
+   </tr>
+   <tr>
+      <th>2</th>
+      <td id="a2">&#9817;</td>
+      <td id="b2">&#9817;</td>
+      <td id="c2">&#9817;</td>
+      <td id="d2">&#9817;</td>
+      <td id="e2">&#9817;</td>
+      <td id="f2">&#9817;</td>
+      <td id="g2">&#9817;</td>
+      <td id="h2">&#9817;</td>
+   </tr>
+   <tr>
+      <th>1</th>
+      <td id="a1">&#9814;</td>
+      <td id="b1">&#9816;</td>
+      <td id="c1">&#9815;</td>
+      <td id="d1">&#9813;</td>
+      <td id="e1">&#9812;</td>
+      <td id="f1">&#9815;</td>
+      <td id="g1">&#9816;</td>
+      <td id="h1">&#9814;</td>
+   </tr>
+   <tr>
+      <th></th>
+      <th>a</th>
+      <th>b</th>
+      <th>c</th>
+      <th>d</th>
+      <th>e</th>
+      <th>f</th>
+      <th>g</th>
+      <th>h</th>
+   </tr>
+</table>
+<!-- Controls for Chess Move -->
+<div class="controls d-flex justify-content-center align-items-center my-3">
+   <input type="text" class="form-control mx-2" id="src-dst" placeholder="e2e4" style="width: 100px;">
+   <button class="btn btn-primary mx-2" onclick="movePiece()">Move</button>
+</div>
+<!-- Resign Button -->
+<div class="controls d-flex justify-content-around align-items-center my-3">
+   <button class="btn btn-warning" onclick="resign()">Resign</button>
+</div>
+<script>
+   let currentUser="{{request.user.username}}"
+   let matchId = "{{ match_id }}";  // Set this to the match's ID passed from the server
+   
+   function getCSRFToken() {
+       let cookies = document.cookie.split(';');
+       for (let i = 0; i < cookies.length; i++) {
+           let cookie = cookies[i].trim();
+           if (cookie.startsWith('csrftoken=')) {
+               return cookie.substring('csrftoken='.length, cookie.length);
+           }
+       }
+       return '';
+   }
+   
+   function resign() {
+       // Send an AJAX request to handle resignation
+       fetch("{% url 'resign_game' %}", {
+           method: 'POST',
+           headers: {
+               'Content-Type': 'application/json',
+               'X-CSRFToken': getCSRFToken()
+           },
+           body: JSON.stringify({'match_id':matchId})  // Send an empty object for now
+       })
+       .then(response => response.json())
+       .then(data => {
+           if (data.status === 'success') {
+               alert('You resigned. Redirecting to game history...');
+               window.location.href = "{% url 'game' %}";  // Redirect to the game history page
+           } else {
+               alert('Error: ' + data.message);
+           }
+       })
+       .catch(error => {
+           console.error('Error:', error);
+       });
+   }
+   
+   function displayMessage(outcome) {
+   let message;
+   if (outcome === "won") {
+   message = "Congratulations! You won the game";
+   } else if (outcome === "lost") {
+   message = "Sorry, you lost. Try again next time!";
+   } else if (outcome === "draw") {
+   message = "The game is a draw";
+   } else {
+   return; // Don't display anything if the game isn't over
+   }
+   const goHome = confirm(
+   message + "\n\nDo you want to return to the home page?"
+   );
+   if (goHome) {
+   // If user clicks OK, redirect to home page
+   window.location.href = "/";
+   }
+   }
+   // Poll for board updates every 3 seconds
+   function pollBoardState() {
+       fetch(`/get_game_state/${matchId}/`)
+       .then(response => response.json())
+       .then(data => {
+           if (data.status === 'success') {
+               console.log(data)
+               console.log(data,'data here of poll')
+               updateBoard(data.board_state);  // Update the board with the new state
+               currentTurn=data.current
+               currentTurnDisplay()
+               enableDisableInputs()
+              if (!data.game_active) {
+                  console.log('game no loger active')
+                     displayMessage(data.outcome);
+                   }
+           }
+       })
+       .catch(error => {
+           console.error('Error fetching board state:', error);
+       });
+   }
+   
+   setInterval(pollBoardState, 1000);  // Poll every 3 seconds
+   
+   function movePiece() {
+       const src_dst = document.getElementById('src-dst').value;
+      if (src_dst.length<4){
+         alert("please provide proper input")
+         return
+      }
+      let src = src_dst.slice(0, 2);  // First two characters
+      let dst = src_dst.slice(2);     // Last two characters
+
+   
+       fetch(`/update_board/${matchId}/`, {
+           method: 'POST',
+           headers: {
+               'Content-Type': 'application/json',
+               'X-CSRFToken': getCSRFToken()
+           },
+           body: JSON.stringify({ 'src': src, 'dst': dst })
+       })
+       .then(response => response.json())
+       .then(data => {
+           if (data.status === 'success') {
+               updateBoard(data.board_state);  // Update the board locally after move
+               document.getElementById('src-dst').value=""
+   
+           } else {
+               alert('Invalid move!');
+           }
+       })
+       .catch(error => {
+           console.error('Error updating board:', error);
+       });
+   }
+   
+   // You need to implement this function to update the board on the page
+   function updateBoard(boardState) {
+       
+       // Logic to update the chessboard based on the board state
+       // You can parse the boardState JSON and update each piece on the board accordingly
+       for (let row = 1; row <= 8; row++) {
+         for (let col = "a".charCodeAt(0); col <= "h".charCodeAt(0); col++) {
+           const square = String.fromCharCode(col) + row;
+           document.getElementById(square).innerHTML = "";
+         }
+       }
+       // Then set the pieces according to the current board state
+       for (const [square, piece] of Object.entries(boardState)) {
+         document.getElementById(square).innerHTML = piece;
+       }
+   }
+   
+   let currentTurn;
+   function currentTurnDisplay() {
+   const turnDisplay = document.getElementById("currentTurn");
+   turnDisplay.textContent = currentTurn;
+   if (currentTurn === currentUser) {
+   turnDisplay.style.color = "green";
+   } else {
+   turnDisplay.style.color = "red";
+   }
+   }
+   function enableDisableInputs() {
+   const checker = currentTurn === currentUser;
+   
+   document.getElementById("src-dst").disabled = !checker;
+   
+   const buttons = document.querySelectorAll("button");
+   buttons.forEach(button => {
+   button.disabled = !checker;
+   });
+   }
+   
+   currentTurnDisplay()
+   enableDisableInputs()
+   
+</script>
+{% endblock %}
+
