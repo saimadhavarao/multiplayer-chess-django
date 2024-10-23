@@ -1,0 +1,47 @@
+{% extends "chess_app/base.html" %}
+
+{% block content %}
+    <h2>Edit Journal</h2>
+        <div class="mb-3">
+            <textarea style="width:100%" class="form-control" id="journal" name="journal" rows="5">{{ journal.journal }}</textarea>
+        </div>
+        <div style="text-align:center">
+        <button style="margin-top:20px" type="submit" onclick="handleJournalSubmit()" class="btn btn-primary">Save Changes</button>
+        <a href="/game/" class="btn btn-secondary">Cancel</a>
+        </div>
+    <script>
+   function getCSRFToken() {
+       let cookies = document.cookie.split(';');
+       for (let i = 0; i < cookies.length; i++) {
+           let cookie = cookies[i].trim();
+           if (cookie.startsWith('csrftoken=')) {
+               return cookie.substring('csrftoken='.length, cookie.length);
+           }
+       }
+       return '';
+   }
+    function handleJournalSubmit(){
+      var journal=document.getElementById('journal').value
+
+    fetch("/edit-match/"+"{{journal.match.id}}"+"/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCSRFToken()
+      },
+      body: JSON.stringify({ 'journal':journal })
+    })
+      .then(response => response.json())
+      .then(data => {
+        console.log(data)
+        if (data.success){
+          alert("Journal successfully Updated")
+        }else{
+          alert('error while updating journal')
+        }
+      })
+        }
+ 
+    </script>
+
+{% endblock %}

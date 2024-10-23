@@ -6,16 +6,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chess Project</title>
     <link rel="stylesheet" href="{% static 'chess_app/css/styles.css' %}">
-</head>
+    </head>
 <body>
     <nav>
         <ul>
-            <li><a href="{% url 'home' %}">Home</a></li>
+
+            <li>
+                {% if '/play_game/' in request.path %}
+                <a href="#">Home</a>
+                {% else %}
+                <a href="{% url 'home' %}">Home</a>
+                {% endif %}
+            </li>
             <li><a href="{% url 'about' %}">About</a></li>
             <li><a href="{% url 'history' %}">History</a></li>
             <li><a href="{% url 'rules' %}">Rules</a></li>
-            <li><a href="{% url 'login' %}">Login</a></li>
-            <li><a href="{% url 'join' %}">Join</a></li>
+            {% if user.is_authenticated %}
+                <li>
+                    <form style="padding:0;margin:0;"action="{% url 'logout' %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit">Logout</button>
+                    </form>
+                </li>
+            {% else %}
+                <li><a href="{% url 'login' %}">Login</a></li>
+                <li><a href="{% url 'join' %}">Join</a></li>
+            {% endif %}
         </ul>
     </nav>
     <div class="container">
