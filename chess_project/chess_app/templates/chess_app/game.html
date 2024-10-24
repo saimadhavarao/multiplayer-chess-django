@@ -202,7 +202,8 @@
                   console.log('declined')
                }
            } else {
-               alert('Error: ' + data.message);
+              console.log(data.message,'error message')
+               //alert('Error: ' + data.message);
            }
        })
        .catch(error => {
